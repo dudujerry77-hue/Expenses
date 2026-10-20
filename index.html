@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Expense Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js for Visual Graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ===== SIDE MENU ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Menu</h2>
+      <button id="theme-toggle" class="icon-btn" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+      <button id="close-sidebar" class="icon-btn mobile-only"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="sidebar-content">
+      <nav class="side-nav">
+        <a href="#" class="nav-link active" data-view="expenses" onclick="navigateTo('expenses')">
+          <i class="fa-solid fa-wallet"></i> Expenses
+        </a>
+        <a href="#" class="nav-link" data-view="shopping" onclick="navigateTo('shopping')">
+          <i class="fa-solid fa-layer-group"></i> Shopping Cards
+        </a>
+        <a href="#" class="nav-link" data-view="history" onclick="navigateTo('history')">
+          <i class="fa-solid fa-clock-rotate-left"></i> History Log
+        </a>
+      </nav>
+
+      <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
+
+      <!-- Currency Selector -->
+      <div class="budget-setting">
+        <label>Currency</label>
+        <select id="currency-select" style="margin-top: 5px;">
+          <option value="₦">Naira (₦)</option>
+          <option value="$">Dollar ($)</option>
+          <option value="£">Pound (£)</option>
+          <option value="€">Euro (€)</option>
+        </select>
+      </div>
+
+      <div class="budget-setting">
+        <label>Monthly Budget</label>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+          <input type="number" id="budget-input" placeholder="e.g. 50000" min="0" step="100">
+          <button id="save-budget-btn" class="secondary-btn" style="padding: 10px;"><i class="fa-solid fa-check"></i></button>
+        </div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
+
+      <button class="side-btn" id="export-csv-btn"><i class="fa-solid fa-file-csv"></i> Export to CSV</button>
+      <button class="side-btn" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Backup Data (JSON)</button>
+      
+      <!-- Restore Data -->
+      <input type="file" id="restore-file" accept=".json" hidden onchange="importBackup(event)">
+      <button class="side-btn" onclick="document.getElementById('restore-file').click()"><i class="fa-solid fa-upload"></i> Restore Data</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    
+    <!-- ================= VIEW: EXPENSES ================= -->
+    <div id="view-expenses" class="view active">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button id="open-sidebar" class="icon-btn mobile-only"><i class="fa-solid fa-bars"></i></button>
+          <h1>Expense Tracker</h1>
+        </div>
+        <button onclick="document.getElementById('add-modal').classList.add('open')" class="primary-btn add-btn">
+          <i class="fa-solid fa-plus"></i> Add Expense
+        </button>
+      </header>
+
+      <!-- Analytics Chart -->
+      <section class="card chart-section">
+        <h3>Spending Breakdown</h3>
+        <div class="chart-container">
+          <canvas id="expense-chart"></canvas>
+        </div>
+      </section>
+
+      <div class="budget-progress-container hidden" id="budget-progress-container">
+        <div class="budget-info">
+          <span id="budget-status-text">Monthly Budget</span>
+          <span id="budget-amounts"></span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="budget-progress-fill"></div>
+        </div>
+      </div>
+
+      <div id="custom-date-box" class="custom-date-container hidden">
+        <input type="date" id="start-date">
+        <span>to</span>
+        <input type="date" id="end-date">
+        <button id="apply-custom" class="secondary-btn">Apply</button>
+      </div>
+
+      <section class="card table-section">
+        <table id="expense-table">
+          <thead>
+            <tr>
+              <th class="th-item">Spend-item</th>
+              <th class="th-desc">Description</th>
+              <th class="th-amount">Amount</th>
+              <th class="th-filter">
+                <div class="header-filter-wrapper">
+                  <input type="text" id="search-input" placeholder="Search..." class="search-field">
+                  <select id="time-filter">
+                    <option value="daily">Today</option>
+                    <option value="3days">3 Days</option>
+                    <option value="weekly">This Week</option>
+                    <option value="10days">10 Days</option>
+                    <option value="15days">15 Days</option>
+                    <option value="30days">30 Days</option>
+                    <option value="60days">60 Days</option>
+                    <option value="90days">90 Days</option>
+                    <option value="custom">Custom...</option>
+                  </select>
+                </div>
+              </th>
+              <th class="th-actions"></th>
+            </tr>
+          </thead>
+        </table>
+        <p id="empty-message" class="empty-msg">No expenses found.</p>
+      </section>
+    </div>
+
+    <!-- ================= VIEW: SHOPPING CARDS ================= -->
+    <div id="view-shopping" class="view">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button onclick="document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open');" class="icon-btn mobile-only"><i class="fa-solid fa-bars"></i></button>
+          <h1>Shopping Cards</h1>
+        </div>
+        <button onclick="document.getElementById('add-card-modal').classList.add('open')" class="primary-btn add-btn">
+          <i class="fa-solid fa-plus"></i> New Card
+        </button>
+      </header>
+
+      <div class="cards-grid" id="shopping-cards-container"></div>
+    </div>
+
+    <!-- ================= VIEW: CARD DETAILS ================= -->
+    <div id="view-card-details" class="view">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button onclick="navigateTo('shopping')" class="icon-btn" title="Back to Cards"><i class="fa-solid fa-arrow-left"></i></button>
+          <h1 id="detail-card-title">Card Name</h1>
+        </div>
+        <button onclick="deleteCurrentCard()" class="icon-btn" style="color: var(--danger);" title="Delete Card"><i class="fa-solid fa-trash"></i></button>
+      </header>
+
+      <div class="card-items-list" id="card-items-container"></div>
+
+      <!-- ITEM INPUT FORM (STICKY BOTTOM) -->
+      <div class="item-form-wrapper">
+        <div class="item-form-container">
+          <div class="form-row-img">
+            <span class="img-hint" id="img-hint-text"><i class="fa-solid fa-camera"></i> add image to remember quickly</span>
+            <input type="file" id="item-image-file" accept="image/*" hidden onchange="handleImagePreview(this)">
+            <button type="button" class="secondary-btn" onclick="document.getElementById('item-image-file').click()">Add Img</button>
+          </div>
+          <div class="form-row-name">
+            <input type="text" id="new-item-name" placeholder="add an item to this list....">
+          </div>
+          <div class="form-row-desc">
+            <textarea id="new-item-desc" placeholder="describe how Important (get the item) is"></textarea>
+            <button class="primary-btn add-item-btn" onclick="addItemToCard()">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW: HISTORY LOG ================= -->
+    <div id="view-history" class="view">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button onclick="document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open');" class="icon-btn mobile-only"><i class="fa-solid fa-bars"></i></button>
+          <h1>Activity History</h1>
+        </div>
+        <button onclick="clearHistory()" class="secondary-btn" style="color: var(--danger); font-size: 13px;">Clear Log</button>
+      </header>
+
+      <section class="card table-section">
+        <table id="history-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">Action</th>
+              <th style="width: 20%;">Date / Time</th>
+              <th style="width: 20%;">Spend-item</th>
+              <th style="width: 30%;">Description</th>
+              <th style="width: 15%; text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+        <p id="history-empty" class="empty-msg" style="display: none;">No activity yet.</p>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- ===== MODALS ===== -->
+  <div class="modal-overlay" id="add-modal">
+    <div class="modal">
+      <button class="modal-close" id="add-close"><i class="fa-solid fa-xmark"></i></button>
+      <h2>Add New Expense</h2>
+      <form id="expense-form">
+        <label>Spend-item 
+          <select id="spend-item" required>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Data">Data</option>
+            <option value="Other...">Other...</option>
+          </select>
+        </label>
+        <label>Description 
+          <textarea id="description" placeholder="What did you spend on?" rows="2" required></textarea>
+        </label>
+        <label>Amount 
+          <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" required>
+        </label>
+        <button type="submit" class="primary-btn" style="width: 100%; margin-top: 10px;">Save Expense</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="add-card-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="document.getElementById('add-card-modal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+      <h2>Create Shopping Card</h2>
+      <form id="create-card-form">
+        <label>Card Name
+          <input type="text" id="card-name-input" placeholder="e.g. Food, Kitchen Stuff, Party" required>
+        </label>
+        <button type="submit" class="primary-btn" style="width: 100%; margin-top: 10px;">Create Card</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <button class="modal-close" id="edit-close"><i class="fa-solid fa-xmark"></i></button>
+      <h2>Edit Expense</h2>
+      <form id="edit-form">
+        <label>Spend-item <select id="edit-item"></select></label>
+        <label>Description <textarea id="edit-description" rows="2" required></textarea></label>
+        <label>Amount <input type="number" id="edit-amount" min="0.01" step="0.01" required></label>
+        <button type="submit" class="primary-btn" style="width: 100%;">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="category-modal">
+    <div class="modal">
+      <button class="modal-close" id="category-close"><i class="fa-solid fa-xmark"></i></button>
+      <h2>Create New Spend-item</h2>
+      <input type="text" id="new-category-name" placeholder="e.g. Utilities, Rent" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:15px;">
+      <button id="save-category-btn" class="primary-btn" style="width:100%;">Save Category</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
