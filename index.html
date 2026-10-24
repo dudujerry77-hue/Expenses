@@ -22,8 +22,7 @@
       <button id="close-sidebar" class="icon-btn mobile-only"><i class="fa-solid fa-xmark"></i></button>
     </div>
     
-    <div class="sidebar-content" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-      
+    <div class="sidebar-content">
       <!-- Top Navigation -->
       <nav class="side-nav">
         <a href="#" class="nav-link active" data-view="expenses" onclick="navigateTo('expenses')">
@@ -37,14 +36,12 @@
         </a>
       </nav>
 
-      <!-- Bottom Section (Settings/Login & PWA) -->
+      <!-- Bottom Section -->
       <div class="sidebar-bottom">
-        <!-- Settings & Login Button -->
         <button class="side-btn" onclick="navigateTo('account')">
           <i class="fa-solid fa-gear"></i> <span id="sidebar-user-name">Settings & Login</span>
         </button>
 
-        <!-- PWA Install & Upgrade -->
         <button class="side-btn" id="install-app-btn" style="display: none; background: var(--primary); color: white; border: none;">
           <i class="fa-solid fa-download"></i> Install App
         </button>
@@ -224,7 +221,7 @@
           </div>
         </section>
 
-        <!-- 3. DATA MANAGEMENT (CSV / BACKUP / RESTORE) -->
+        <!-- 3. DATA MANAGEMENT -->
         <section class="card">
           <h3><i class="fa-solid fa-database"></i> Data Management</h3>
           <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Keep your data safe even without an account.</p>
@@ -271,12 +268,14 @@
     </div>
   </div>
 
+  <!-- Edit Modal (Now includes Date) -->
   <div class="modal-overlay" id="edit-modal">
     <div class="modal">
       <button class="modal-close" id="edit-close"><i class="fa-solid fa-xmark"></i></button>
       <h2>Edit Expense</h2>
       <form id="edit-form">
         <label>Spend-item <select id="edit-item"></select></label>
+        <label>Date <input type="date" id="edit-date" required></label>
         <label>Description <textarea id="edit-description" rows="2" required></textarea></label>
         <label>Amount <input type="number" id="edit-amount" min="0.01" step="0.01" required></label>
         <button type="submit" class="primary-btn" style="width: 100%;">Save Changes</button>

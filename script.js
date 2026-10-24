@@ -34,8 +34,8 @@ let myChart = null;
 function navigateTo(viewName) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(`view-${viewName}`).classList.add("active");
-  document.querySelectorAll(".nav-link").forEach(link => link.classList.remove("active"));
   
+  document.querySelectorAll(".nav-link").forEach(link => link.classList.remove("active"));
   const activeLink = document.querySelector(`.nav-link[data-view="${viewName}"]`);
   if(activeLink) activeLink.classList.add("active");
 
@@ -61,49 +61,36 @@ function closeSidebar() {
 }
 
 /* =====================================================
-   3. LOGIN / LOGOUT MOCK LOGIC
+   3. LOGIN / LOGOUT
    ===================================================== */
 function checkLoginState() {
-  const sidebarUserName = document.getElementById("sidebar-user-name");
   const loggedOutView = document.getElementById("logged-out-view");
   const loggedInView = document.getElementById("logged-in-view");
-  
   if (loggedInUser) {
-    sidebarUserName.textContent = loggedInUser.email.split('@')[0]; // Show first part of email
-    loggedOutView.style.display = "none";
-    loggedInView.style.display = "block";
+    loggedOutView.style.display = "none"; loggedInView.style.display = "block";
     document.getElementById("account-email-display").textContent = loggedInUser.email;
   } else {
-    sidebarUserName.textContent = "Login / Account";
-    loggedOutView.style.display = "block";
-    loggedInView.style.display = "none";
+    loggedOutView.style.display = "block"; loggedInView.style.display = "none";
   }
 }
 
 document.getElementById("login-form").onsubmit = (e) => {
   e.preventDefault();
-  const email = document.getElementById("login-email").value;
-  
-  // MOCK LOGIN: In reality, you would verify credentials with Firebase/Supabase here.
-  loggedInUser = { email: email };
+  loggedInUser = { email: document.getElementById("login-email").value };
   localStorage.setItem("loggedInUser", JSON.stringify(loggedInUser));
-  
   checkLoginState();
   document.getElementById("login-form").reset();
-  
   alert("Logged in! (Note: Data is still stored locally in this browser. Connect a backend to sync across devices.)");
 };
 
 function logoutUser() {
   if(confirm("Log out? Your data will remain on this device.")) {
-    loggedInUser = null;
-    localStorage.removeItem("loggedInUser");
-    checkLoginState();
+    loggedInUser = null; localStorage.removeItem("loggedInUser"); checkLoginState();
   }
 }
 
 /* =====================================================
-   4. EXPENSES & FILTERING
+   4. EXPENSES & FILTERING (Fixed Date Bug)
    ===================================================== */
 function formatMoney(amount) {
   return `${currentCurrency}${amount.toLocaleString("en-NG", {minimumFractionDigits:2})}`;
@@ -157,10 +144,7 @@ function display() {
   renderChart(filtered);
 
   if (filtered.length === 0) {
-    table.style.display = "none";
-    emptyMessage.style.display = "block";
-    updateBudgetUI();
-    return;
+    table.style.display = "none"; emptyMessage.style.display = "block"; updateBudgetUI(); return;
   }
   
   table.style.display = "table";
@@ -182,15 +166,18 @@ function display() {
     let dayTotal = 0;
     dayExpenses.forEach(e => dayTotal += e.amount);
 
-    const d = new Date(dateStr);
-    const diffDays = Math.round((today - d) / (1000 * 60 * 60 * 24));
+    // FIX: Force Local Time to avoid timezone shifts (e.g., off by 1 day)
+    const parts = dateStr.split('-');
+    const dLocal = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    const diffDays = Math.round((today - dLocal) / (1000 * 60 * 60 * 24));
     
     let label = "";
     if (diffDays === 0) label = "Today total spending";
     else if (diffDays === 1) label = "Total spending a day ago";
     else if (diffDays < 7) label = `Total spending ${diffDays} days ago`;
     else if (diffDays === 7) label = "Total spending a week ago";
-    else label = `Total spending on ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    else label = `Total spending on ${String(dLocal.getDate()).padStart(2, '0')}/${String(dLocal.getMonth() + 1).padStart(2, '0')}/${dLocal.getFullYear()}`;
 
     const tbody = document.createElement("tbody");
     tbody.innerHTML = `
@@ -223,16 +210,15 @@ function display() {
 }
 
 /* =====================================================
-   5. CHART.JS, BUDGET & SETTINGS
+   5. CHART (Fixed crashing on browser)
    ===================================================== */
 function renderChart(data) {
+  if (typeof Chart === 'undefined') return; // <--- FIX: Prevents crash if CDN blocked
   const canvas = document.getElementById('expense-chart');
   if (!canvas) return;
+
   const categories = {};
-  data.forEach(e => {
-    if (!categories[e.item]) categories[e.item] = 0;
-    categories[e.item] += e.amount;
-  });
+  data.forEach(e => { categories[e.item] = (categories[e.item] || 0) + e.amount; });
 
   if (myChart) myChart.destroy(); 
   const isDark = document.body.hasAttribute("data-theme");
@@ -251,67 +237,47 @@ function renderChart(data) {
   });
 }
 
+/* =====================================================
+   6. SETTINGS, CRUD & EDIT DATE FIX
+   ===================================================== */
 const currencySelect = document.getElementById("currency-select");
 currencySelect.value = currentCurrency;
 currencySelect.addEventListener("change", function() {
-  currentCurrency = this.value;
-  localStorage.setItem("currency", currentCurrency);
-  display(); 
+  currentCurrency = this.value; localStorage.setItem("currency", currentCurrency); display(); 
 });
 
 document.getElementById("budget-input").value = monthlyBudget > 0 ? monthlyBudget : "";
 document.getElementById("save-budget-btn").onclick = () => {
   monthlyBudget = Number(document.getElementById("budget-input").value) || 0;
-  localStorage.setItem("monthlyBudget", monthlyBudget);
-  updateBudgetUI();
-  alert("Budget saved!");
+  localStorage.setItem("monthlyBudget", monthlyBudget); updateBudgetUI(); alert("Budget saved!");
 };
 
 function updateBudgetUI() {
   const container = document.getElementById("budget-progress-container");
   if (monthlyBudget <= 0) { container.classList.add("hidden"); return; }
   container.classList.remove("hidden");
-
-  const now = new Date();
-  let spentThisMonth = 0;
+  const now = new Date(); let spentThisMonth = 0;
   expenses.forEach(e => {
     const d = new Date(e.date);
     if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) spentThisMonth += e.amount;
   });
-
   const percentage = (spentThisMonth / monthlyBudget) * 100;
   const fill = document.getElementById("budget-progress-fill");
   fill.style.width = Math.min(percentage, 100) + "%";
-  
-  if (percentage >= 100) {
-    fill.classList.add("over-budget");
-    document.getElementById("budget-status-text").textContent = "⚠️ Over Budget!";
-  } else {
-    fill.classList.remove("over-budget");
-    document.getElementById("budget-status-text").textContent = "Monthly Budget";
-  }
+  fill.classList.toggle("over-budget", percentage >= 100);
+  document.getElementById("budget-status-text").textContent = percentage >= 100 ? "⚠️ Over Budget!" : "Monthly Budget";
   document.getElementById("budget-amounts").textContent = `${formatMoney(spentThisMonth)} / ${formatMoney(monthlyBudget)}`;
 }
 
-/* =====================================================
-   6. CRUD, THEME & INIT
-   ===================================================== */
 function applyTheme(theme) {
   const icon = document.querySelector("#theme-toggle i");
-  if (theme === "dark") {
-    document.body.setAttribute("data-theme", "dark");
-    icon.className = "fa-solid fa-sun";
-  } else {
-    document.body.removeAttribute("data-theme");
-    icon.className = "fa-solid fa-moon";
-  }
+  if (theme === "dark") { document.body.setAttribute("data-theme", "dark"); icon.className = "fa-solid fa-sun"; }
+  else { document.body.removeAttribute("data-theme"); icon.className = "fa-solid fa-moon"; }
 }
 applyTheme(localStorage.getItem("theme") || "system");
 document.getElementById("theme-toggle").onclick = () => {
-  const isDark = document.body.hasAttribute("data-theme");
-  const newTheme = isDark ? "light" : "dark";
-  localStorage.setItem("theme", newTheme);
-  applyTheme(newTheme);
+  const newTheme = document.body.hasAttribute("data-theme") ? "light" : "dark";
+  localStorage.setItem("theme", newTheme); applyTheme(newTheme);
 };
 
 function populateCategories() {
@@ -322,12 +288,23 @@ function populateCategories() {
   itemInput.innerHTML += `<option value="Other...">Other...</option>`;
 }
 
+// Handle "Other..." in ADD Modal
 itemInput.addEventListener("change", function() {
   if (this.value === "Other...") {
     document.getElementById("category-modal").classList.add("open");
     document.getElementById("new-category-name").value = "";
     document.getElementById("new-category-name").focus();
     this.value = "Food";
+  }
+});
+
+// Handle "Other..." in EDIT Modal
+document.getElementById("edit-item").addEventListener("change", function() {
+  if (this.value === "Other...") {
+    document.getElementById("category-modal").classList.add("open");
+    document.getElementById("new-category-name").value = "";
+    document.getElementById("new-category-name").focus();
+    this.value = "Food"; 
   }
 });
 
@@ -339,10 +316,16 @@ document.getElementById("save-category-btn").onclick = () => {
   customCategories.push(newCat);
   localStorage.setItem("customCategories", JSON.stringify(customCategories));
   populateCategories();
-  itemInput.value = newCat;
+  
+  // Check which modal is open to auto-select the new category
+  if (document.getElementById("edit-modal").classList.contains("open")) {
+    document.getElementById("edit-item").innerHTML = itemInput.innerHTML;
+    document.getElementById("edit-item").value = newCat;
+  } else {
+    itemInput.value = newCat;
+  }
   document.getElementById("category-modal").classList.remove("open");
 };
-
 document.getElementById("category-close").onclick = () => document.getElementById("category-modal").classList.remove("open");
 
 function logHistory(action, expenseData) {
@@ -382,6 +365,10 @@ table.addEventListener("click", (e) => {
     const exp = expenses.find(x => x.id === id);
     document.getElementById("edit-item").innerHTML = itemInput.innerHTML;
     document.getElementById("edit-item").value = exp.item;
+    
+    // FIX: Populate Edit Date
+    document.getElementById("edit-date").value = exp.date.split('T')[0]; 
+    
     document.getElementById("edit-description").value = exp.description;
     document.getElementById("edit-amount").value = exp.amount;
     document.getElementById("edit-modal").classList.add("open");
@@ -404,6 +391,11 @@ document.getElementById("edit-form").onsubmit = (e) => {
   const exp = expenses.find(x => x.id === editingId);
   if (!exp) return;
   logHistory("Edited", { ...exp });
+  
+  // FIX: Save Edit Date
+  const newDateStr = document.getElementById("edit-date").value;
+  exp.date = new Date(newDateStr + 'T12:00:00').toISOString();
+
   exp.item = document.getElementById("edit-item").value;
   exp.description = document.getElementById("edit-description").value.trim();
   exp.amount = Number(document.getElementById("edit-amount").value);
@@ -412,6 +404,9 @@ document.getElementById("edit-form").onsubmit = (e) => {
   document.getElementById("edit-modal").classList.remove("open");
 };
 
+/* =====================================================
+   7. SHOPPING CARDS & HISTORY (Unchanged logic)
+   ===================================================== */
 function renderHistory() {
   const tbody = document.getElementById("history-body");
   const empty = document.getElementById("history-empty");
@@ -432,12 +427,139 @@ function renderHistory() {
     tbody.appendChild(tr);
   });
 }
+function clearHistory() { if(confirm("Clear all history logs?")) { historyLog = []; localStorage.setItem("historyLog", JSON.stringify(historyLog)); renderHistory(); } }
 
-function clearHistory() {
-  if(confirm("Clear all history logs?")) { historyLog = []; localStorage.setItem("historyLog", JSON.stringify(historyLog)); renderHistory(); }
+document.getElementById("create-card-form").onsubmit = (e) => {
+  e.preventDefault();
+  const name = document.getElementById("card-name-input").value.trim();
+  if (!name) return;
+  shoppingCards.push({ id: Date.now().toString(), name: name, items: [] });
+  localStorage.setItem("shoppingCards", JSON.stringify(shoppingCards));
+  document.getElementById("create-card-form").reset();
+  document.getElementById("add-card-modal").classList.remove("open");
+  renderShoppingCards();
+};
+
+function renderShoppingCards() {
+  const container = document.getElementById("shopping-cards-container");
+  container.innerHTML = "";
+  if (shoppingCards.length === 0) {
+    container.innerHTML = "<p style='color:var(--text-muted); grid-column: 1/-1;'>No cards yet. Create one to group your shopping items!</p>"; return;
+  }
+  shoppingCards.forEach(card => {
+    const pendingItems = card.items.filter(i => !i.done);
+    const previewList = pendingItems.slice(0, 3).map(i => `<li>${i.text}</li>`).join("");
+    const moreCount = pendingItems.length > 3 ? `<li>...and ${pendingItems.length - 3} more</li>` : "";
+    const div = document.createElement("div");
+    div.className = "shopping-card";
+    div.onclick = () => openCardDetails(card.id);
+    div.innerHTML = `<h3>${card.name}</h3><ul class="card-preview">${pendingItems.length > 0 ? previewList + moreCount : "<li style='color:var(--border);'>No items yet</li>"}</ul>`;
+    container.appendChild(div);
+  });
 }
 
-// Export CSV & Backup logic stays exactly the same...
+function openCardDetails(cardId) {
+  activeCardId = cardId;
+  const card = shoppingCards.find(c => c.id === cardId);
+  document.getElementById("detail-card-title").textContent = card.name;
+  document.getElementById("new-item-name").value = "";
+  document.getElementById("new-item-desc").value = "";
+  document.getElementById("item-image-file").value = "";
+  itemImageBase64 = null;
+  document.getElementById("img-hint-text").classList.remove("has-img");
+  document.getElementById("img-hint-text").innerHTML = '<i class="fa-solid fa-camera"></i> add image to remember quickly';
+  navigateTo('card-details');
+  renderCardItems();
+}
+
+function deleteCurrentCard() {
+  if (!confirm("Are you sure you want to delete this entire card?")) return;
+  shoppingCards = shoppingCards.filter(c => c.id !== activeCardId);
+  localStorage.setItem("shoppingCards", JSON.stringify(shoppingCards));
+  navigateTo('shopping');
+}
+
+function renderCardItems() {
+  const listEl = document.getElementById("card-items-container");
+  listEl.innerHTML = "";
+  const card = shoppingCards.find(c => c.id === activeCardId);
+  if (card.items.length === 0) { listEl.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding: 40px;'>Your list is empty. Add items below.</p>"; return; }
+  
+  card.items.forEach((item, index) => {
+    const div = document.createElement("div");
+    div.className = `card-item ${item.done ? 'done' : ''}`;
+    const imgHtml = item.image ? `<img src="${item.image}" class="card-item-img" alt="Item">` : `<div class="card-item-img"><i class="fa-solid fa-image"></i></div>`;
+    div.innerHTML = `
+      ${imgHtml}
+      <div class="card-item-info">
+        <h4>${item.text}</h4>
+        <p>${item.desc || 'No description provided.'}</p>
+        <div class="card-item-actions">
+          ${!item.done ? `
+            <button class="btn-get" onclick="handleGetItem(${index})"><i class="fa-solid fa-check"></i> Get it</button>
+            <button class="btn-miss" onclick="handleMissItem(${index})"><i class="fa-solid fa-xmark"></i> Not found</button>
+          ` : '<span style="font-size:12px; color:var(--text-muted);"><i class="fa-solid fa-check-double"></i> Handled</span>'}
+        </div>
+      </div>
+    `;
+    listEl.appendChild(div);
+  });
+}
+
+function handleImagePreview(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      itemImageBase64 = e.target.result;
+      document.getElementById("img-hint-text").classList.add("has-img");
+      document.getElementById("img-hint-text").innerHTML = '<i class="fa-solid fa-check-circle"></i> Image attached!';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function addItemToCard() {
+  const nameInput = document.getElementById("new-item-name");
+  const descInput = document.getElementById("new-item-desc");
+  const text = nameInput.value.trim();
+  if (!text) return alert("Please enter an item name.");
+
+  const card = shoppingCards.find(c => c.id === activeCardId);
+  card.items.push({ text: text, desc: descInput.value.trim(), image: itemImageBase64, done: false });
+  localStorage.setItem("shoppingCards", JSON.stringify(shoppingCards));
+  
+  nameInput.value = ""; descInput.value = "";
+  document.getElementById("item-image-file").value = "";
+  itemImageBase64 = null;
+  document.getElementById("img-hint-text").classList.remove("has-img");
+  document.getElementById("img-hint-text").innerHTML = '<i class="fa-solid fa-camera"></i> add image to remember quickly';
+  renderCardItems();
+}
+
+window.handleGetItem = (itemIndex) => {
+  const card = shoppingCards.find(c => c.id === activeCardId);
+  const item = card.items[itemIndex];
+  card.items[itemIndex].done = true;
+  localStorage.setItem("shoppingCards", JSON.stringify(shoppingCards));
+  renderCardItems();
+  
+  navigateTo('expenses');
+  openAddExpenseModal();
+  descInput.value = item.text + (item.desc ? ` - ${item.desc}` : "");
+  amountInput.value = "";
+  amountInput.focus();
+};
+
+window.handleMissItem = (itemIndex) => {
+  const card = shoppingCards.find(c => c.id === activeCardId);
+  card.items[itemIndex].done = true;
+  localStorage.setItem("shoppingCards", JSON.stringify(shoppingCards));
+  renderCardItems();
+};
+
+/* =====================================================
+   8. BACKUP & PWA UPGRADE
+   ===================================================== */
 document.getElementById("export-csv-btn").onclick = () => {
   if (expenses.length === 0) return alert("No expenses to export!");
   let csv = "Date,Spend-item,Description,Amount\n";
@@ -482,37 +604,13 @@ populateCategories();
 checkLoginState();
 display();
 
-/* =====================================================
-   7. PWA INSTALL & UPGRADE LOGIC
-   ===================================================== */
-let deferredPrompt;
-const installBtn = document.getElementById('install-app-btn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installBtn) installBtn.style.display = 'flex';
-});
-
-if (installBtn) {
-  installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      installBtn.style.display = 'none';
-    }
-  });
-}
-
-// Upgrade Logic: Listen for new service worker waiting
+let refreshing = false;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
-          // If a new worker is installed and we already have an active one, show Upgrade button
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             document.getElementById('upgrade-app-btn').style.display = 'flex';
           }
@@ -521,13 +619,15 @@ if ('serviceWorker' in navigator) {
     }).catch(err => console.log('SW Failed', err));
   });
 
-  // When the upgrade button is clicked, tell SW to skip waiting and reload
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    window.location.reload();
+    refreshing = true;
+  });
+
   document.getElementById('upgrade-app-btn').onclick = () => {
     navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg && reg.waiting) {
-        reg.waiting.postMessage({ action: 'skipWaiting' });
-      }
+      if (reg && reg.waiting) reg.waiting.postMessage({ action: 'skipWaiting' });
     });
-    window.location.reload();
   };
 }
