@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#0f766e">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
-  <!-- Chart.js for Visual Graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -23,7 +22,9 @@
       <button id="close-sidebar" class="icon-btn mobile-only"><i class="fa-solid fa-xmark"></i></button>
     </div>
     
-    <div class="sidebar-content">
+    <div class="sidebar-content" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+      
+      <!-- Top Navigation -->
       <nav class="side-nav">
         <a href="#" class="nav-link active" data-view="expenses" onclick="navigateTo('expenses')">
           <i class="fa-solid fa-wallet"></i> Expenses
@@ -36,35 +37,21 @@
         </a>
       </nav>
 
-      <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
+      <!-- Bottom Section (Settings/Login & PWA) -->
+      <div class="sidebar-bottom">
+        <!-- Settings & Login Button -->
+        <button class="side-btn" onclick="navigateTo('account')">
+          <i class="fa-solid fa-gear"></i> <span id="sidebar-user-name">Settings & Login</span>
+        </button>
 
-      <!-- Currency Selector -->
-      <div class="budget-setting">
-        <label>Currency</label>
-        <select id="currency-select" style="margin-top: 5px;">
-          <option value="₦">Naira (₦)</option>
-          <option value="$">Dollar ($)</option>
-          <option value="£">Pound (£)</option>
-          <option value="€">Euro (€)</option>
-        </select>
+        <!-- PWA Install & Upgrade -->
+        <button class="side-btn" id="install-app-btn" style="display: none; background: var(--primary); color: white; border: none;">
+          <i class="fa-solid fa-download"></i> Install App
+        </button>
+        <button class="side-btn" id="upgrade-app-btn" style="display: none; background: var(--success); color: white; border: none;">
+          <i class="fa-solid fa-arrow-up"></i> Upgrade Available
+        </button>
       </div>
-
-      <div class="budget-setting">
-        <label>Monthly Budget</label>
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-          <input type="number" id="budget-input" placeholder="e.g. 50000" min="0" step="100">
-          <button id="save-budget-btn" class="secondary-btn" style="padding: 10px;"><i class="fa-solid fa-check"></i></button>
-        </div>
-      </div>
-
-      <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
-
-      <button class="side-btn" id="export-csv-btn"><i class="fa-solid fa-file-csv"></i> Export to CSV</button>
-      <button class="side-btn" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Backup Data (JSON)</button>
-      
-      <!-- Restore Data -->
-      <input type="file" id="restore-file" accept=".json" hidden onchange="importBackup(event)">
-      <button class="side-btn" onclick="document.getElementById('restore-file').click()"><i class="fa-solid fa-upload"></i> Restore Data</button>
     </div>
   </aside>
 
@@ -77,17 +64,14 @@
           <button id="open-sidebar" class="icon-btn mobile-only"><i class="fa-solid fa-bars"></i></button>
           <h1>Expense Tracker</h1>
         </div>
-        <button onclick="document.getElementById('add-modal').classList.add('open')" class="primary-btn add-btn">
+        <button onclick="openAddExpenseModal()" class="primary-btn add-btn">
           <i class="fa-solid fa-plus"></i> Add Expense
         </button>
       </header>
 
-      <!-- Analytics Chart -->
       <section class="card chart-section">
         <h3>Spending Breakdown</h3>
-        <div class="chart-container">
-          <canvas id="expense-chart"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="expense-chart"></canvas></div>
       </section>
 
       <div class="budget-progress-container hidden" id="budget-progress-container">
@@ -95,15 +79,11 @@
           <span id="budget-status-text">Monthly Budget</span>
           <span id="budget-amounts"></span>
         </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="budget-progress-fill"></div>
-        </div>
+        <div class="progress-track"><div class="progress-fill" id="budget-progress-fill"></div></div>
       </div>
 
       <div id="custom-date-box" class="custom-date-container hidden">
-        <input type="date" id="start-date">
-        <span>to</span>
-        <input type="date" id="end-date">
+        <input type="date" id="start-date"><span>to</span><input type="date" id="end-date">
         <button id="apply-custom" class="secondary-btn">Apply</button>
       </div>
 
@@ -149,7 +129,6 @@
           <i class="fa-solid fa-plus"></i> New Card
         </button>
       </header>
-
       <div class="cards-grid" id="shopping-cards-container"></div>
     </div>
 
@@ -162,10 +141,7 @@
         </div>
         <button onclick="deleteCurrentCard()" class="icon-btn" style="color: var(--danger);" title="Delete Card"><i class="fa-solid fa-trash"></i></button>
       </header>
-
       <div class="card-items-list" id="card-items-container"></div>
-
-      <!-- ITEM INPUT FORM (STICKY BOTTOM) -->
       <div class="item-form-wrapper">
         <div class="item-form-container">
           <div class="form-row-img">
@@ -173,9 +149,7 @@
             <input type="file" id="item-image-file" accept="image/*" hidden onchange="handleImagePreview(this)">
             <button type="button" class="secondary-btn" onclick="document.getElementById('item-image-file').click()">Add Img</button>
           </div>
-          <div class="form-row-name">
-            <input type="text" id="new-item-name" placeholder="add an item to this list....">
-          </div>
+          <div class="form-row-name"><input type="text" id="new-item-name" placeholder="add an item to this list...."></div>
           <div class="form-row-desc">
             <textarea id="new-item-desc" placeholder="describe how Important (get the item) is"></textarea>
             <button class="primary-btn add-item-btn" onclick="addItemToCard()">Add</button>
@@ -193,22 +167,73 @@
         </div>
         <button onclick="clearHistory()" class="secondary-btn" style="color: var(--danger); font-size: 13px;">Clear Log</button>
       </header>
-
       <section class="card table-section">
         <table id="history-table">
-          <thead>
-            <tr>
-              <th style="width: 15%;">Action</th>
-              <th style="width: 20%;">Date / Time</th>
-              <th style="width: 20%;">Spend-item</th>
-              <th style="width: 30%;">Description</th>
-              <th style="width: 15%; text-align: right;">Amount</th>
-            </tr>
-          </thead>
+          <thead><tr><th style="width: 15%;">Action</th><th style="width: 20%;">Date / Time</th><th style="width: 20%;">Spend-item</th><th style="width: 30%;">Description</th><th style="width: 15%; text-align: right;">Amount</th></tr></thead>
           <tbody id="history-body"></tbody>
         </table>
         <p id="history-empty" class="empty-msg" style="display: none;">No activity yet.</p>
       </section>
+    </div>
+
+    <!-- ================= VIEW: ACCOUNT & SETTINGS ================= -->
+    <div id="view-account" class="view">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button onclick="document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open');" class="icon-btn mobile-only"><i class="fa-solid fa-bars"></i></button>
+          <h1>Settings & Login</h1>
+        </div>
+      </header>
+
+      <div class="settings-grid">
+        <!-- 1. LOGIN SECTION -->
+        <section class="card">
+          <h3><i class="fa-solid fa-user"></i> Account</h3>
+          <div id="logged-out-view">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Log in to sync your data (Backend required).</p>
+            <form id="login-form">
+              <label>Email <input type="email" id="login-email" placeholder="you@email.com" required></label>
+              <label>Password <input type="password" id="login-password" placeholder="••••••••" required></label>
+              <button type="submit" class="primary-btn" style="width: 100%; margin-top: 10px;">Log In</button>
+            </form>
+          </div>
+          <div id="logged-in-view" style="display: none;">
+            <p style="margin-bottom: 15px;">Logged in as: <strong id="account-email-display"></strong></p>
+            <button onclick="logoutUser()" class="secondary-btn" style="color: var(--danger); width: 100%;">Log Out</button>
+          </div>
+        </section>
+
+        <!-- 2. SETTINGS SECTION -->
+        <section class="card">
+          <h3><i class="fa-solid fa-sliders"></i> Preferences</h3>
+          <div class="budget-setting" style="margin-bottom: 15px;">
+            <label>Currency</label>
+            <select id="currency-select" style="margin-top: 5px;">
+              <option value="₦">Naira (₦)</option>
+              <option value="$">Dollar ($)</option>
+              <option value="£">Pound (£)</option>
+              <option value="€">Euro (€)</option>
+            </select>
+          </div>
+          <div class="budget-setting">
+            <label>Monthly Budget</label>
+            <div style="display: flex; gap: 5px; margin-top: 5px;">
+              <input type="number" id="budget-input" placeholder="e.g. 50000" min="0" step="100">
+              <button id="save-budget-btn" class="primary-btn" style="padding: 10px 15px;">Save</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. DATA MANAGEMENT (CSV / BACKUP / RESTORE) -->
+        <section class="card">
+          <h3><i class="fa-solid fa-database"></i> Data Management</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Keep your data safe even without an account.</p>
+          <button class="side-btn" id="export-csv-btn" style="width: 100%; margin-bottom: 10px;"><i class="fa-solid fa-file-csv"></i> Export to CSV</button>
+          <button class="side-btn" onclick="exportBackup()" style="width: 100%; margin-bottom: 10px;"><i class="fa-solid fa-download"></i> Backup Data (JSON)</button>
+          <input type="file" id="restore-file" accept=".json" hidden onchange="importBackup(event)">
+          <button class="side-btn" onclick="document.getElementById('restore-file').click()" style="width: 100%;"><i class="fa-solid fa-upload"></i> Restore Data</button>
+        </section>
+      </div>
     </div>
 
   </main>
@@ -227,12 +252,9 @@
             <option value="Other...">Other...</option>
           </select>
         </label>
-        <label>Description 
-          <textarea id="description" placeholder="What did you spend on?" rows="2" required></textarea>
-        </label>
-        <label>Amount 
-          <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" required>
-        </label>
+        <label>Date <input type="date" id="expense-date" required></label>
+        <label>Description <textarea id="description" placeholder="What did you spend on?" rows="2" required></textarea></label>
+        <label>Amount <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" required></label>
         <button type="submit" class="primary-btn" style="width: 100%; margin-top: 10px;">Save Expense</button>
       </form>
     </div>
@@ -243,9 +265,7 @@
       <button class="modal-close" onclick="document.getElementById('add-card-modal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
       <h2>Create Shopping Card</h2>
       <form id="create-card-form">
-        <label>Card Name
-          <input type="text" id="card-name-input" placeholder="e.g. Food, Kitchen Stuff, Party" required>
-        </label>
+        <label>Card Name <input type="text" id="card-name-input" placeholder="e.g. Food, Kitchen Stuff, Party" required></label>
         <button type="submit" class="primary-btn" style="width: 100%; margin-top: 10px;">Create Card</button>
       </form>
     </div>
